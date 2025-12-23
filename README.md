@@ -119,4 +119,4 @@ A：替换 `diary.png`（舔狗日记）或 `jichou.jpg`（记仇）即可，注
 **作者**：Ogier  
 **版本**：1.0.0  
 **更新时间**：2024-05-20  
-**仓库地址**：[（可在此处添加你的仓库链接）](https://github.com/yourusername/your-repo)
+**仓库地址**：[（可在此处添加你的仓库链接）](https://github.com/Ogier-J/fun_generator?tab=readme-ov-file)
