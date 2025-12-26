@@ -205,13 +205,58 @@ wuzhongshengyou = on_command("无中生友", aliases={"无中生有", "wuzhongsh
 async def _(arg: Message = CommandArg()):
     kw = arg.extract_plain_text().strip()
     if '/' not in kw:
-        await wuzhongshengyou.finish("用法：无中生友 我今天好开心/QQ号")
+        await wuzhongshengyou.finish(
+            "用法示例：\n"
+            "无中生友 今天天气真好/123456789\n"
+            "无中生友 小明/今天天气真好/123456789  ← 手动指定昵称\n"
+            "无中生友 小美/今天天气真好  ← 不带QQ号，用默认头像"
+        )
         return
-    arr = kw.split('/', 1)
-    text, qq = arr[0].strip(), arr[1].strip()
+
+    parts = kw.split('/', 2)  # 最多分成3段
+    if len(parts) == 2:
+        # 老格式：内容/QQ号
+        text, qq = parts[0].strip(), parts[1].strip()
+        custom_name = None
+    elif len(parts) == 3:
+        # 新格式：昵称/内容/QQ号
+        custom_name, text, qq = parts[0].strip(), parts[1].strip(), parts[2].strip()
+    else:
+        await wuzhongshengyou.finish("参数格式错误，请检查斜杠数量")
+        return
+
+    # 替换文字中的“他/她”为“我”（保持原有逻辑）
     text = text.replace('他', '我').replace('她', '我')
-    avatar_bytes = get_pic(qq)
+
+    # 获取头像
+    if 'qq' in locals() and qq.isdigit():
+        avatar_bytes = get_pic(qq)
+    else:
+        # 没提供 QQ 号，用一个默认占位头像（可选：放一个本地 default_avatar.png）
+        # 这里先用一个腾讯默认空头像
+        avatar_bytes = requests.get('http://q1.qlogo.cn/g?b=qq&nk=0&s=100').content
+        qq = None
+
     avatar = Image.open(BytesIO(avatar_bytes))
+
+    # ========== 获取昵称 ==========
+    name = "神秘用户"  # 默认值
+
+    if 'custom_name' in locals() and custom_name:
+        # 优先使用手动指定的昵称
+        name = custom_name
+    elif qq:
+        # 再尝试自动拉取（保留原逻辑，但加个默认值更友好）
+        try:
+            # 你可以保留原来的 get_name，或者用我之前推荐的新API
+            auto_name = get_name(qq)
+            if auto_name not in ["富婆", "未知用户", ""]:  # 过滤明显失败的情况
+                name = auto_name
+        except:
+            pass
+    # =================================
+
+    # 下面代码保持不变：圆形头像 + 绘制文字
     scale = 3
     r = 100 * scale
     alpha = Image.new('L', (r, r), 0)
@@ -221,16 +266,19 @@ async def _(arg: Message = CommandArg()):
     mask_img = Image.new('RGBA', (100, 100))
     mask_img.paste(avatar.resize((100, 100)), (0, 0))
     mask_img.putalpha(alpha)
+
     font_name = ImageFont.truetype(FONT_PATH, 30)
     font_text = ImageFont.truetype(FONT_PATH, 25)
-    name = get_name(qq)
+
     image_text = Image.new('RGB', (450, 150), (255, 255, 255))
     draw = ImageDraw.Draw(image_text)
     draw.text((0, 0), name, fill=(0, 0, 0), font=font_name)
     draw.text((0, 40), text, fill=(125, 125, 125), font=font_text)
+
     final = Image.new('RGB', (700, 150), (255, 255, 255))
     final.paste(mask_img, (25, 25), mask_img)
     final.paste(image_text, (150, 40))
+
     await wuzhongshengyou.finish(MessageSegment.image(pic2b64(final)))
 
 # ==================== 舔狗日记 ====================
@@ -373,9 +421,15 @@ async def _(matcher: Matcher):
 示例：记仇 小明/偷吃了我的零食
 
 👥 无中生友
-指令：无中生友 内容文字/QQ号
-示例：无中生友 今天天气真好/123456789
-说明：自动把“他/她”替换为“我”，并显示QQ头像+昵称
+指令：
+• 无中生友 内容文字/QQ号                  ← 尝试自动获取昵称（拉不到用默认）
+• 无中生友 自定义昵称/内容文字/QQ号        ← 强制使用指定昵称
+• 无中生友 自定义昵称/内容文字              ← 不带QQ号，使用默认头像
+示例：
+无中生友 今天天气真好/123456789
+无中生友 小可爱/今天天气真好/123456789
+无中生友 老王/终于发工资了
+说明：内容中的“他/她”会自动替换为“我”
 
 🐶 舔狗日记
 • 舔狗日记 → 随机一条
